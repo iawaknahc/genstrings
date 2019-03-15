@@ -1,0 +1,2 @@
+(ocamllex ascii_plist_lexer)
+(library (name ascii_plist_lexer))
