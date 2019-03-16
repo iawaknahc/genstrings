@@ -1,8 +1,8 @@
 type t =
   | EOF
-  | Whitespace of string
   | BareString of string
   | QuotedString of string
+  | Bytes of bytes
   | Comment of string
   | Semicolon
   | Equal
@@ -11,8 +11,6 @@ type t =
   | ParenLeft
   | ParenRight
   | Comma
-  | LessThan
-  | GreaterThan
 
 exception UnterminatedComment
 
