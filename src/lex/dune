@@ -1,0 +1,2 @@
+(ocamllex lex)
+(library (name lex))

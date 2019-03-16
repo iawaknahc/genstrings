@@ -17,6 +17,7 @@ exception UnterminatedComment
 exception UnterminatedStringLiteral
 exception UnterminatedBytes
 exception InvalidEscapeSequence
+exception InvalidCharacter of char
 
 type utf16 =
 | SingleCodeUnit
@@ -67,11 +68,12 @@ let hex_to_bytes hex =
 }
 
 let whitespace = [' ' '\t' '\n' '\r']
+let newline = "\n" | "\r\n"
 let bare_string = ['a'-'z' 'A'-'Z' '0'-'9' '$' '-' '_' '.' ':' '/']
 let octal = ['0'-'7']
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 
-rule lex = parse
+rule lex_with_comment = parse
 | eof { EOF }
 | ';' { Semicolon }
 | '=' { Equal }
@@ -80,36 +82,37 @@ rule lex = parse
 | '(' { ParenLeft }
 | ')' { ParenRight }
 | ',' { Comma }
-| whitespace+ { lex lexbuf }
 | bare_string+ as s { BareString s }
-| '"' { lex_string (Buffer.create 17) lexbuf }
+| whitespace+ { lex_with_comment lexbuf }
+| '"' { lex_quoted_string (Buffer.create 17) lexbuf }
 | '<' { lex_bytes (Buffer.create 17) lexbuf }
-| "/*" { lex_comment (Buffer.create 17) lexbuf }
+| "/*" { lex_block_comment (Buffer.create 17) lexbuf }
+| _ as ch { raise (InvalidCharacter ch) }
 
-and lex_string buf = parse
+and lex_quoted_string buf = parse
 | eof | '\n' | '\r' { raise UnterminatedStringLiteral }
 | '"' { QuotedString (Buffer.contents buf) }
-| '\\' '\\' { Buffer.add_char buf '\\'; lex_string buf lexbuf }
-| '\\' 'a' { Buffer.add_char buf '\x07'; lex_string buf lexbuf }
-| '\\' 'b' { Buffer.add_char buf '\b'; lex_string buf lexbuf }
-| '\\' 'f' { Buffer.add_char buf '\x0c'; lex_string buf lexbuf }
-| '\\' 'n' { Buffer.add_char buf '\n'; lex_string buf lexbuf }
-| '\\' 'r' { Buffer.add_char buf '\r'; lex_string buf lexbuf }
-| '\\' 't' { Buffer.add_char buf '\t'; lex_string buf lexbuf }
-| '\\' 'v' { Buffer.add_char buf '\x0b'; lex_string buf lexbuf }
-| '\\' '\'' { Buffer.add_char buf '\''; lex_string buf lexbuf }
-| '\\' '"' { Buffer.add_char buf '"'; lex_string buf lexbuf }
-| '\\' '?' { Buffer.add_char buf '?'; lex_string buf lexbuf }
+| '\\' '\\' { Buffer.add_char buf '\\'; lex_quoted_string buf lexbuf }
+| '\\' 'a' { Buffer.add_char buf '\x07'; lex_quoted_string buf lexbuf }
+| '\\' 'b' { Buffer.add_char buf '\b'; lex_quoted_string buf lexbuf }
+| '\\' 'f' { Buffer.add_char buf '\x0c'; lex_quoted_string buf lexbuf }
+| '\\' 'n' { Buffer.add_char buf '\n'; lex_quoted_string buf lexbuf }
+| '\\' 'r' { Buffer.add_char buf '\r'; lex_quoted_string buf lexbuf }
+| '\\' 't' { Buffer.add_char buf '\t'; lex_quoted_string buf lexbuf }
+| '\\' 'v' { Buffer.add_char buf '\x0b'; lex_quoted_string buf lexbuf }
+| '\\' '\'' { Buffer.add_char buf '\''; lex_quoted_string buf lexbuf }
+| '\\' '"' { Buffer.add_char buf '"'; lex_quoted_string buf lexbuf }
+| '\\' '?' { Buffer.add_char buf '?'; lex_quoted_string buf lexbuf }
 | '\\' (octal octal octal as octal) {
   let i = int_of_string ("0o" ^ octal) in
   let c = Char.chr i in
   Buffer.add_char buf c;
-  lex_string buf lexbuf
+  lex_quoted_string buf lexbuf
 }
 | '\\' 'U' { lex_utf16 buf lexbuf }
 | '\\' eof { raise InvalidEscapeSequence }
 | '\\' _ { raise InvalidEscapeSequence }
-| _ as ch { Buffer.add_char buf ch; lex_string buf lexbuf }
+| _ as ch { Buffer.add_char buf ch; lex_quoted_string buf lexbuf }
 
 and lex_utf16 buf = parse
 | hex | hex hex | hex hex hex | hex hex hex hex as hex {
@@ -117,7 +120,7 @@ and lex_utf16 buf = parse
   match classify code_unit with
   | SingleCodeUnit -> (
     Buffer.add_utf_8_uchar buf (Uchar.of_int code_unit);
-    lex_string buf lexbuf
+    lex_quoted_string buf lexbuf
   )
   | HighSurrogate -> lex_utf16_low buf code_unit lexbuf
   | LowSurrogate -> raise InvalidEscapeSequence
@@ -131,16 +134,16 @@ and lex_utf16_low buf high = parse
   | LowSurrogate -> (
     let code_point = utf16_high_low_to_code_point high code_unit in
     Buffer.add_utf_8_uchar buf (Uchar.of_int code_point);
-    lex_string buf lexbuf
+    lex_quoted_string buf lexbuf
   )
   | _ -> raise InvalidEscapeSequence
 }
 | eof | _ { raise InvalidEscapeSequence }
 
-and lex_comment buf = parse
+and lex_block_comment buf = parse
 | eof { raise UnterminatedComment }
 | "*/" { Comment (Buffer.contents buf) }
-| _ as ch { Buffer.add_char buf ch; lex_comment buf lexbuf }
+| _ as ch { Buffer.add_char buf ch; lex_block_comment buf lexbuf }
 
 and lex_bytes buf = parse
 | whitespace+ { lex_bytes buf lexbuf }
@@ -151,3 +154,42 @@ and lex_bytes buf = parse
   lex_bytes buf lexbuf
 }
 | eof | _ { raise UnterminatedBytes }
+{
+type comments = string list
+
+type token =
+  | EOF of comments
+  | BareString of string * comments
+  | QuotedString of string * comments
+  | Bytes of bytes * comments
+  | Semicolon of comments
+  | Equal of comments
+  | BraceLeft of comments
+  | BraceRight of comments
+  | ParenLeft of comments
+  | ParenRight of comments
+  | Comma of comments
+
+let lex lexbuf =
+  let rec loop comments =
+    match lex_with_comment lexbuf with
+    | Comment comment -> loop (comment::comments)
+    | t -> (
+      let comments = List.rev comments in
+      match t with
+      | Comment _ -> failwith "unreachable"
+      | EOF -> EOF comments
+      | BareString s -> BareString (s, comments)
+      | QuotedString s -> QuotedString (s, comments)
+      | Bytes b -> Bytes (b, comments)
+      | Semicolon -> Semicolon comments
+      | Equal -> Equal comments
+      | BraceLeft -> BraceLeft comments
+      | BraceRight -> BraceRight comments
+      | ParenLeft -> ParenLeft comments
+      | ParenRight -> ParenRight comments
+      | Comma -> Comma comments
+    )
+  in
+  loop []
+}
