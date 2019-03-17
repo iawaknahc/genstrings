@@ -96,7 +96,7 @@ let save state t =
   Queue.take state.queue
 }
 
-let whitespace = [' ' '\t' '\n' '\r']
+let whitespace = [' ' '\t']
 let newline = "\n" | "\r\n"
 let bare_string = ['a'-'z' 'A'-'Z' '0'-'9' '$' '-' '_' '.' ':']
 let octal = ['0'-'7']
@@ -111,6 +111,11 @@ rule lex_with_comment state = parse
 | '(' { flush state; save state ParenLeft }
 | ')' { flush state; save state ParenRight }
 | ',' { flush state; save state Comma }
+| newline {
+  flush state;
+  Lexing.new_line lexbuf;
+  lex_with_comment state lexbuf
+}
 | whitespace+ { flush state; lex_with_comment state lexbuf }
 | '"' {
   flush state;
@@ -200,15 +205,22 @@ and lex_utf16_low buf high = parse
 | eof | _ { raise InvalidEscapeSequence }
 
 and lex_line_comment buf = parse
-| eof | newline { Comment (Buffer.contents buf) }
+| eof { Comment (Buffer.contents buf) }
+| newline { Lexing.new_line lexbuf; Comment (Buffer.contents buf) }
 | _ as ch { Buffer.add_char buf ch; lex_line_comment buf lexbuf }
 
 and lex_block_comment buf = parse
 | eof { raise UnterminatedComment }
 | "*/" { Comment (Buffer.contents buf) }
+| newline as s {
+  Lexing.new_line lexbuf;
+  Buffer.add_string buf s;
+  lex_block_comment buf lexbuf
+}
 | _ as ch { Buffer.add_char buf ch; lex_block_comment buf lexbuf }
 
 and lex_bytes buf = parse
+| newline { Lexing.new_line lexbuf; lex_bytes buf lexbuf }
 | whitespace+ { lex_bytes buf lexbuf }
 | '>' { Bytes (Buffer.to_bytes buf) }
 | (hex hex)* as hex {
