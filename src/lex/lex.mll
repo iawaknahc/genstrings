@@ -4,7 +4,8 @@ type t =
 | BareString of string
 | QuotedString of string
 | Bytes of bytes
-| Comment of string
+| BlockComment of string
+| LineComment of string
 | Semicolon
 | Equal
 | BraceLeft
@@ -24,7 +25,7 @@ type utf16 =
 | HighSurrogate
 | LowSurrogate
 
-exception UnterminatedComment
+exception UnterminatedBlockComment
 exception UnterminatedStringLiteral
 exception UnterminatedBytes
 exception InvalidEscapeSequence
@@ -205,13 +206,13 @@ and lex_utf16_low buf high = parse
 | eof | _ { raise InvalidEscapeSequence }
 
 and lex_line_comment buf = parse
-| eof { Comment (Buffer.contents buf) }
-| newline { Lexing.new_line lexbuf; Comment (Buffer.contents buf) }
+| eof { LineComment (Buffer.contents buf) }
+| newline { Lexing.new_line lexbuf; LineComment (Buffer.contents buf) }
 | _ as ch { Buffer.add_char buf ch; lex_line_comment buf lexbuf }
 
 and lex_block_comment buf = parse
-| eof { raise UnterminatedComment }
-| "*/" { Comment (Buffer.contents buf) }
+| eof { raise UnterminatedBlockComment }
+| "*/" { BlockComment (Buffer.contents buf) }
 | newline as s {
   Lexing.new_line lexbuf;
   Buffer.add_string buf s;

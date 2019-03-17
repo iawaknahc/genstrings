@@ -3,7 +3,8 @@ type t =
   | BareString of string
   | QuotedString of string
   | Bytes of bytes
-  | Comment of string
+  | BlockComment of string
+  | LineComment of string
   | Semicolon
   | Equal
   | BraceLeft
@@ -12,7 +13,7 @@ type t =
   | ParenRight
   | Comma
 
-exception UnterminatedComment
+exception UnterminatedBlockComment
 
 exception UnterminatedStringLiteral
 
