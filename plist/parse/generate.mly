@@ -17,12 +17,12 @@
 %%
 
 let plist :=
-  x = list(entry); EOF; <>
+  ~ = list(entry); EOF; <>
 
 let entry :=
   comment = BlockComment; key = string; Equal; value = string; Semicolon;
   { { Ast.comment; key; value; } }
 
 let string :=
-| s = BareString; <>
-| s = QuotedString; <>
+| ~ = BareString; <>
+| ~ = QuotedString; <>
