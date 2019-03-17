@@ -81,7 +81,6 @@ let new_state () = {
 let remove_slash state =
   let len = Buffer.length state.buf in
   Buffer.truncate state.buf (len - 1)
-;;
 
 let flush state =
   state.last_char_is_slash <- false;
@@ -89,9 +88,8 @@ let flush state =
   if len <> 0 then (
     let tt = BareString (Buffer.contents state.buf) in
     Buffer.clear state.buf;
-    Queue.add tt state.queue;
+    Queue.add tt state.queue
   )
-;;
 
 let save state t =
   Queue.add t state.queue;
@@ -113,25 +111,6 @@ rule lex_with_comment state = parse
 | '(' { flush state; save state ParenLeft }
 | ')' { flush state; save state ParenRight }
 | ',' { flush state; save state Comma }
-| '/' as ch {
-  if state.last_char_is_slash
-  then (
-    remove_slash state;
-    flush state;
-    let line_comment = lex_line_comment (Buffer.create 17) lexbuf in
-    save state line_comment
-  )
-  else (
-    state.last_char_is_slash <- true;
-    Buffer.add_char state.buf ch;
-    lex_with_comment state lexbuf
-  )
-}
-| bare_string+ as s {
-  state.last_char_is_slash <- false;
-  Buffer.add_string state.buf s;
-  lex_with_comment state lexbuf
-}
 | whitespace+ { flush state; lex_with_comment state lexbuf }
 | '"' {
   flush state;
@@ -147,6 +126,25 @@ rule lex_with_comment state = parse
   flush state;
   let block_comment = lex_block_comment (Buffer.create 17) lexbuf in
   save state block_comment
+}
+| bare_string+ as s {
+  state.last_char_is_slash <- false;
+  Buffer.add_string state.buf s;
+  lex_with_comment state lexbuf
+}
+| '/' as ch {
+  if state.last_char_is_slash
+  then (
+    remove_slash state;
+    flush state;
+    let line_comment = lex_line_comment (Buffer.create 17) lexbuf in
+    save state line_comment
+  )
+  else (
+    state.last_char_is_slash <- true;
+    Buffer.add_char state.buf ch;
+    lex_with_comment state lexbuf
+  )
 }
 | _ as ch { flush state; raise (InvalidCharacter ch) }
 
