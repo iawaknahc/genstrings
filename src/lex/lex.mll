@@ -103,7 +103,7 @@ let bare_string = ['a'-'z' 'A'-'Z' '0'-'9' '$' '-' '_' '.' ':']
 let octal = ['0'-'7']
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 
-rule lex_with_comment state = parse
+rule lex state = parse
 | eof { flush state; save state EOF }
 | ';' { flush state; save state Semicolon }
 | '=' { flush state; save state Equal }
@@ -115,9 +115,9 @@ rule lex_with_comment state = parse
 | newline {
   flush state;
   Lexing.new_line lexbuf;
-  lex_with_comment state lexbuf
+  lex state lexbuf
 }
-| whitespace+ { flush state; lex_with_comment state lexbuf }
+| whitespace+ { flush state; lex state lexbuf }
 | '"' {
   flush state;
   let quoted_string = lex_quoted_string (Buffer.create 17) lexbuf in
@@ -136,7 +136,7 @@ rule lex_with_comment state = parse
 | bare_string+ as s {
   state.last_char_is_slash <- false;
   Buffer.add_string state.buf s;
-  lex_with_comment state lexbuf
+  lex state lexbuf
 }
 | '/' as ch {
   if state.last_char_is_slash
@@ -149,7 +149,7 @@ rule lex_with_comment state = parse
   else (
     state.last_char_is_slash <- true;
     Buffer.add_char state.buf ch;
-    lex_with_comment state lexbuf
+    lex state lexbuf
   )
 }
 | _ as ch { flush state; raise (InvalidCharacter ch) }
@@ -233,5 +233,5 @@ and lex_bytes buf = parse
 {
 let new_lex () =
   let state = new_state () in
-  fun lexbuf -> lex_with_comment state lexbuf
+  fun lexbuf -> lex state lexbuf
 }
