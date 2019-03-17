@@ -1,5 +1,5 @@
 {
-type t =
+type raw_token =
 | EOF
 | BareString of string
 | QuotedString of string
@@ -17,7 +17,7 @@ type t =
 type state = {
   mutable bare_string_start : Lexing.position option;
   mutable slash_start : Lexing.position option;
-  queue : (t * Lexing.position * Lexing.position) Queue.t;
+  queue : (raw_token * Lexing.position * Lexing.position) Queue.t;
   buf : Buffer.t;
 }
 
@@ -270,7 +270,47 @@ and lex_bytes buf = parse
 }
 | eof | _ { raise UnterminatedBytes }
 {
-let new_lex () =
+
+type comment = BlockComment of string | LineComment of string
+
+type comments = comment list
+
+type token =
+  | EOF of comments
+  | BareString of string * comments
+  | QuotedString of string * comments
+  | Bytes of bytes * comments
+  | Semicolon of comments
+  | Equal of comments
+  | BraceLeft of comments
+  | BraceRight of comments
+  | ParenLeft of comments
+  | ParenRight of comments
+  | Comma of comments
+
+let new_raw () =
   let state = new_state () in
   fun lexbuf -> lex state lexbuf
+
+let new_lex () =
+  let lex = new_raw () in
+  let rev = List.rev in
+  fun lexbuf ->
+    let rec loop (comments: comment list) =
+      match lex lexbuf with
+      | (BlockComment comment, _ , _) -> loop @@ BlockComment comment :: comments
+      | (LineComment comment, _, _) -> loop @@ LineComment comment :: comments
+      | (EOF, s, e) -> EOF (rev comments), s, e
+      | (BareString a, s, e) -> BareString (a, rev comments), s, e
+      | (QuotedString a, s, e) -> QuotedString (a, rev comments), s, e
+      | (Bytes a, s, e) -> Bytes (a, rev comments), s, e
+      | (Semicolon, s, e) -> Semicolon (rev comments), s, e
+      | (Equal, s, e) -> Equal (rev comments), s, e
+      | (BraceLeft, s, e) -> BraceLeft (rev comments), s, e
+      | (BraceRight, s, e) -> BraceRight (rev comments), s, e
+      | (ParenLeft, s, e) -> ParenLeft (rev comments), s, e
+      | (ParenRight, s, e) -> ParenRight (rev comments), s, e
+      | (Comma, s, e) -> Comma (rev comments), s, e
+    in
+    loop []
 }
