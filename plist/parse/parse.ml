@@ -29,7 +29,12 @@ let rec loop lex lexbuf checkpoint =
   | I.Shifting _ | I.AboutToReduce _ -> loop lex lexbuf (I.resume checkpoint)
   | I.HandlingError env ->
       let start, end_ = I.positions env in
-      raise @@ ParseError ("SyntaxError", start, end_)
+      let state = I.current_state_number env in
+      let message =
+        try Error.message state with Not_found -> "unknown error"
+      in
+      let message = String.trim message in
+      raise @@ ParseError (message, start, end_)
   | I.Accepted v -> v
   | I.Rejected -> assert false
 

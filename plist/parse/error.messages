@@ -1,0 +1,72 @@
+plist: BlockComment QuotedString Equal BareString Semicolon Semicolon
+##
+## Ends in an error in state: 11.
+##
+## list(entry) -> entry . list(entry) [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## entry
+##
+
+expecting a comment.
+
+plist: BlockComment QuotedString Equal QuotedString QuotedString
+##
+## Ends in an error in state: 6.
+##
+## entry -> BlockComment string Equal string . Semicolon [ EOF BlockComment ]
+##
+## The known suffix of the stack is as follows:
+## BlockComment string Equal string
+##
+
+expecting a `;'
+
+plist: BlockComment QuotedString Equal Semicolon
+##
+## Ends in an error in state: 5.
+##
+## entry -> BlockComment string Equal . string Semicolon [ EOF BlockComment ]
+##
+## The known suffix of the stack is as follows:
+## BlockComment string Equal
+##
+
+expecting a value
+
+plist: BlockComment QuotedString Semicolon
+##
+## Ends in an error in state: 4.
+##
+## entry -> BlockComment string . Equal string Semicolon [ EOF BlockComment ]
+##
+## The known suffix of the stack is as follows:
+## BlockComment string
+##
+
+expecting a `='
+
+plist: BlockComment Semicolon
+##
+## Ends in an error in state: 1.
+##
+## entry -> BlockComment . string Equal string Semicolon [ EOF BlockComment ]
+##
+## The known suffix of the stack is as follows:
+## BlockComment
+##
+
+expecting a key
+
+plist: Semicolon
+##
+## Ends in an error in state: 0.
+##
+## plist' -> . plist [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+expecting a comment
+
