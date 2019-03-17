@@ -16,12 +16,13 @@
 
 %%
 
-plist:
-| x = list(entry); EOF; { x }
+let plist :=
+  x = list(entry); EOF; <>
 
-entry:
-| comment = BlockComment; key = string; Equal; value = string; Semicolon; { { Ast.comment; key; value; } }
+let entry :=
+  comment = BlockComment; key = string; Equal; value = string; Semicolon;
+  { { Ast.comment; key; value; } }
 
-string:
-| s = BareString; { s }
-| s = QuotedString; { s }
+let string :=
+| s = BareString; <>
+| s = QuotedString; <>
