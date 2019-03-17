@@ -13,16 +13,22 @@ type t =
 | ParenRight
 | Comma
 
-exception UnterminatedComment
-exception UnterminatedStringLiteral
-exception UnterminatedBytes
-exception InvalidEscapeSequence
-exception InvalidCharacter of char
+type state = {
+  mutable last_char_is_slash: bool;
+  queue: t Queue.t;
+  buf: Buffer.t;
+}
 
 type utf16 =
 | SingleCodeUnit
 | HighSurrogate
 | LowSurrogate
+
+exception UnterminatedComment
+exception UnterminatedStringLiteral
+exception UnterminatedBytes
+exception InvalidEscapeSequence
+exception InvalidCharacter of char
 
 let surr1 = 0xd800
 let surr2 = 0xdc00
@@ -65,29 +71,84 @@ let hex_to_bytes hex =
       )
     in loop 0 1;
     buf
+
+let new_state () = {
+  last_char_is_slash = false;
+  buf = Buffer.create 17;
+  queue = Queue.create ();
+}
+
+let remove_slash state =
+  let len = Buffer.length state.buf in
+  Buffer.truncate state.buf (len - 1)
+;;
+
+let flush state =
+  state.last_char_is_slash <- false;
+  let len = Buffer.length state.buf in
+  if len <> 0 then (
+    let tt = BareString (Buffer.contents state.buf) in
+    Buffer.clear state.buf;
+    Queue.add tt state.queue;
+  )
+;;
+
+let save state t =
+  Queue.add t state.queue;
+  Queue.take state.queue
 }
 
 let whitespace = [' ' '\t' '\n' '\r']
 let newline = "\n" | "\r\n"
-let bare_string = ['a'-'z' 'A'-'Z' '0'-'9' '$' '-' '_' '.' ':' '/']
+let bare_string = ['a'-'z' 'A'-'Z' '0'-'9' '$' '-' '_' '.' ':']
 let octal = ['0'-'7']
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 
-rule lex_with_comment = parse
-| eof { EOF }
-| ';' { Semicolon }
-| '=' { Equal }
-| '{' { BraceLeft }
-| '}' { BraceRight }
-| '(' { ParenLeft }
-| ')' { ParenRight }
-| ',' { Comma }
-| bare_string+ as s { BareString s }
-| whitespace+ { lex_with_comment lexbuf }
-| '"' { lex_quoted_string (Buffer.create 17) lexbuf }
-| '<' { lex_bytes (Buffer.create 17) lexbuf }
-| "/*" { lex_block_comment (Buffer.create 17) lexbuf }
-| _ as ch { raise (InvalidCharacter ch) }
+rule lex_with_comment state = parse
+| eof { flush state; save state EOF }
+| ';' { flush state; save state Semicolon }
+| '=' { flush state; save state Equal }
+| '{' { flush state; save state BraceLeft }
+| '}' { flush state; save state BraceRight }
+| '(' { flush state; save state ParenLeft }
+| ')' { flush state; save state ParenRight }
+| ',' { flush state; save state Comma }
+| '/' as ch {
+  if state.last_char_is_slash
+  then (
+    remove_slash state;
+    flush state;
+    let line_comment = lex_line_comment (Buffer.create 17) lexbuf in
+    save state line_comment
+  )
+  else (
+    state.last_char_is_slash <- true;
+    Buffer.add_char state.buf ch;
+    lex_with_comment state lexbuf
+  )
+}
+| bare_string+ as s {
+  state.last_char_is_slash <- false;
+  Buffer.add_string state.buf s;
+  lex_with_comment state lexbuf
+}
+| whitespace+ { flush state; lex_with_comment state lexbuf }
+| '"' {
+  flush state;
+  let quoted_string = lex_quoted_string (Buffer.create 17) lexbuf in
+  save state quoted_string
+}
+| '<' {
+  flush state;
+  let bytes = lex_bytes (Buffer.create 17) lexbuf in
+  save state bytes
+}
+| "/*" {
+  flush state;
+  let block_comment = lex_block_comment (Buffer.create 17) lexbuf in
+  save state block_comment
+}
+| _ as ch { flush state; raise (InvalidCharacter ch) }
 
 and lex_quoted_string buf = parse
 | eof | '\n' | '\r' { raise UnterminatedStringLiteral }
@@ -140,6 +201,10 @@ and lex_utf16_low buf high = parse
 }
 | eof | _ { raise InvalidEscapeSequence }
 
+and lex_line_comment buf = parse
+| eof | newline { Comment (Buffer.contents buf) }
+| _ as ch { Buffer.add_char buf ch; lex_line_comment buf lexbuf }
+
 and lex_block_comment buf = parse
 | eof { raise UnterminatedComment }
 | "*/" { Comment (Buffer.contents buf) }
@@ -155,41 +220,7 @@ and lex_bytes buf = parse
 }
 | eof | _ { raise UnterminatedBytes }
 {
-type comments = string list
-
-type token =
-  | EOF of comments
-  | BareString of string * comments
-  | QuotedString of string * comments
-  | Bytes of bytes * comments
-  | Semicolon of comments
-  | Equal of comments
-  | BraceLeft of comments
-  | BraceRight of comments
-  | ParenLeft of comments
-  | ParenRight of comments
-  | Comma of comments
-
-let lex lexbuf =
-  let rec loop comments =
-    match lex_with_comment lexbuf with
-    | Comment comment -> loop (comment::comments)
-    | t -> (
-      let comments = List.rev comments in
-      match t with
-      | Comment _ -> failwith "unreachable"
-      | EOF -> EOF comments
-      | BareString s -> BareString (s, comments)
-      | QuotedString s -> QuotedString (s, comments)
-      | Bytes b -> Bytes (b, comments)
-      | Semicolon -> Semicolon comments
-      | Equal -> Equal comments
-      | BraceLeft -> BraceLeft comments
-      | BraceRight -> BraceRight comments
-      | ParenLeft -> ParenLeft comments
-      | ParenRight -> ParenRight comments
-      | Comma -> Comma comments
-    )
-  in
-  loop []
+let new_lex () =
+  let state = new_state () in
+  fun lexbuf -> lex_with_comment state lexbuf
 }

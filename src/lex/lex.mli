@@ -1,22 +1,25 @@
-type comments = string list
-
-type token =
-  | EOF of comments
-  | BareString of string * comments
-  | QuotedString of string * comments
-  | Bytes of bytes * comments
-  | Semicolon of comments
-  | Equal of comments
-  | BraceLeft of comments
-  | BraceRight of comments
-  | ParenLeft of comments
-  | ParenRight of comments
-  | Comma of comments
+type t =
+  | EOF
+  | BareString of string
+  | QuotedString of string
+  | Bytes of bytes
+  | Comment of string
+  | Semicolon
+  | Equal
+  | BraceLeft
+  | BraceRight
+  | ParenLeft
+  | ParenRight
+  | Comma
 
 exception UnterminatedComment
 
 exception UnterminatedStringLiteral
 
+exception UnterminatedBytes
+
 exception InvalidEscapeSequence
 
-val lex : Lexing.lexbuf -> token
+exception InvalidCharacter of char
+
+val new_lex : unit -> Lexing.lexbuf -> t
