@@ -15,9 +15,10 @@ type t =
 | Comma
 
 type state = {
-  mutable last_char_is_slash: bool;
-  queue: t Queue.t;
-  buf: Buffer.t;
+  mutable bare_string_start : Lexing.position option;
+  mutable slash_start : Lexing.position option;
+  queue : (t * Lexing.position * Lexing.position) Queue.t;
+  buf : Buffer.t;
 }
 
 type utf16 =
@@ -74,7 +75,8 @@ let hex_to_bytes hex =
     buf
 
 let new_state () = {
-  last_char_is_slash = false;
+  bare_string_start = None;
+  slash_start = None;
   buf = Buffer.create 17;
   queue = Queue.create ();
 }
@@ -83,17 +85,36 @@ let remove_slash state =
   let len = Buffer.length state.buf in
   Buffer.truncate state.buf (len - 1)
 
-let flush state =
-  state.last_char_is_slash <- false;
-  let len = Buffer.length state.buf in
-  if len <> 0 then (
-    let tt = BareString (Buffer.contents state.buf) in
+let flush ?end_ state lexbuf =
+  state.slash_start <- None;
+  match state.bare_string_start with
+  | None -> ()
+  | Some start ->
+    state.bare_string_start <- None;
+    let end_ = match end_ with
+    | None -> lexbuf.Lexing.lex_start_p
+    | Some end_ -> end_
+    in
+    let t = BareString (Buffer.contents state.buf) in
     Buffer.clear state.buf;
-    Queue.add tt state.queue
-  )
+    Queue.add (t, start, end_) state.queue
 
-let save state t =
-  Queue.add t state.queue;
+let mark state lexbuf =
+  match state.bare_string_start with
+  | None ->
+    state.bare_string_start <- Some lexbuf.Lexing.lex_start_p
+  | Some _ -> ()
+
+let save ?start ?end_ state lexbuf t =
+  let start = match start with
+  | None -> lexbuf.Lexing.lex_start_p
+  | Some start -> start
+  in
+  let end_ = match end_ with
+  | None -> lexbuf.Lexing.lex_curr_p
+  | Some end_ -> end_
+  in
+  Queue.add (t, start, end_) state.queue;
   Queue.take state.queue
 }
 
@@ -104,55 +125,73 @@ let octal = ['0'-'7']
 let hex = ['0'-'9' 'a'-'f' 'A'-'F']
 
 rule lex state = parse
-| eof { flush state; save state EOF }
-| ';' { flush state; save state Semicolon }
-| '=' { flush state; save state Equal }
-| '{' { flush state; save state BraceLeft }
-| '}' { flush state; save state BraceRight }
-| '(' { flush state; save state ParenLeft }
-| ')' { flush state; save state ParenRight }
-| ',' { flush state; save state Comma }
+| eof { flush state lexbuf; save state lexbuf EOF }
+| ';' { flush state lexbuf; save state lexbuf Semicolon }
+| '=' { flush state lexbuf; save state lexbuf Equal }
+| '{' { flush state lexbuf; save state lexbuf BraceLeft }
+| '}' { flush state lexbuf; save state lexbuf BraceRight}
+| '(' { flush state lexbuf; save state lexbuf ParenLeft }
+| ')' { flush state lexbuf; save state lexbuf ParenRight }
+| ',' { flush state lexbuf; save state lexbuf Comma }
 | newline {
-  flush state;
+  flush state lexbuf;
   Lexing.new_line lexbuf;
   lex state lexbuf
 }
-| whitespace+ { flush state; lex state lexbuf }
+| whitespace+ { flush state lexbuf; lex state lexbuf }
 | '"' {
-  flush state;
+  let start = lexbuf.Lexing.lex_start_p in
+  flush state lexbuf;
   let quoted_string = lex_quoted_string (Buffer.create 17) lexbuf in
-  save state quoted_string
+  save ~start state lexbuf quoted_string
 }
 | '<' {
-  flush state;
+  let start = lexbuf.Lexing.lex_start_p in
+  flush state lexbuf;
   let bytes = lex_bytes (Buffer.create 17) lexbuf in
-  save state bytes
+  save ~start state lexbuf bytes
 }
 | "/*" {
-  flush state;
+  let start = lexbuf.Lexing.lex_start_p in
+  flush state lexbuf;
   let block_comment = lex_block_comment (Buffer.create 17) lexbuf in
-  save state block_comment
+  save ~start state lexbuf block_comment
 }
 | bare_string+ as s {
-  state.last_char_is_slash <- false;
+  state.slash_start <- None;
+  mark state lexbuf;
   Buffer.add_string state.buf s;
   lex state lexbuf
 }
 | '/' as ch {
-  if state.last_char_is_slash
-  then (
-    remove_slash state;
-    flush state;
-    let line_comment = lex_line_comment (Buffer.create 17) lexbuf in
-    save state line_comment
-  )
-  else (
-    state.last_char_is_slash <- true;
+  match state.slash_start with
+  | None ->
+    (* Remember it is the first time we see a slash *)
+    state.slash_start <- Some lexbuf.Lexing.lex_start_p;
+    (* Mark this is the start of a bare string if needed *)
+    mark state lexbuf;
     Buffer.add_char state.buf ch;
     lex state lexbuf
-  )
+  | Some p ->
+    (* We see // *)
+    (* So the first slash should not be part of the bare string *)
+    remove_slash state;
+    (
+      (* If bare_string_start is slash_start then there is no bare string *)
+      match state.bare_string_start with
+      | None -> ()
+      | Some bare_string_start ->
+        if p = bare_string_start
+        then state.bare_string_start <- None
+    );
+
+    (* Possibly flush the preceding bare string which ends with slash_start *)
+    flush ~end_:p state lexbuf;
+
+    let line_comment = lex_line_comment (Buffer.create 17) lexbuf in
+    save ~start:p state lexbuf line_comment
 }
-| _ as ch { flush state; raise (InvalidCharacter ch) }
+| _ as ch { flush state lexbuf; raise (InvalidCharacter ch) }
 
 and lex_quoted_string buf = parse
 | eof | '\n' | '\r' { raise UnterminatedStringLiteral }

@@ -23,4 +23,4 @@ exception InvalidEscapeSequence
 
 exception InvalidCharacter of char
 
-val new_lex : unit -> Lexing.lexbuf -> t
+val new_lex : unit -> Lexing.lexbuf -> t * Lexing.position * Lexing.position
