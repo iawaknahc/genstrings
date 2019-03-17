@@ -2,8 +2,8 @@ module I = Generate.MenhirInterpreter
 
 exception ParseError of string * Lexing.position * Lexing.position
 
-let initial_position =
-  {Lexing.pos_fname= "<filename>"; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
+let initial_position filename =
+  {Lexing.pos_fname= filename; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
 
 let string_of_exn exn =
   let open Lex in
@@ -38,8 +38,8 @@ let rec loop lex lexbuf checkpoint =
   | I.Accepted v -> v
   | I.Rejected -> assert false
 
-let parse_string s =
+let parse_string ?(filename = "<stdin>") s =
   let lexbuf = Lexing.from_string s in
   let lex = Lex.new_raw () in
-  let checkpoint = Generate.Incremental.plist initial_position in
+  let checkpoint = Generate.Incremental.plist @@ initial_position filename in
   loop lex lexbuf checkpoint
