@@ -13,23 +13,6 @@ type raw_token =
   | ParenRight
   | Comma
 
-type comment = BlockComment of string | LineComment of string
-
-type comments = comment list
-
-type token =
-  | EOF of comments
-  | BareString of string * comments
-  | QuotedString of string * comments
-  | Bytes of bytes * comments
-  | Semicolon of comments
-  | Equal of comments
-  | BraceLeft of comments
-  | BraceRight of comments
-  | ParenLeft of comments
-  | ParenRight of comments
-  | Comma of comments
-
 exception UnterminatedBlockComment
 
 exception UnterminatedStringLiteral
@@ -44,4 +27,4 @@ val new_raw :
   unit -> Lexing.lexbuf -> raw_token * Lexing.position * Lexing.position
 
 val new_lex :
-  unit -> Lexing.lexbuf -> token * Lexing.position * Lexing.position
+  unit -> Lexing.lexbuf -> Token.token * Lexing.position * Lexing.position

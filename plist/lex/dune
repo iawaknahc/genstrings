@@ -1,2 +1,4 @@
 (ocamllex lex)
-(library (name lex))
+(library
+  (name lex)
+  (libraries token))
