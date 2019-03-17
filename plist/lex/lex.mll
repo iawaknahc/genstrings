@@ -181,7 +181,8 @@ rule lex state = parse
 | _ as ch { flush state lexbuf; raise (InvalidCharacter ch) }
 
 and lex_quoted_string buf = parse
-| eof | '\n' | '\r' { raise UnterminatedStringLiteral }
+| eof { raise UnterminatedStringLiteral }
+| newline { Lexing.new_line lexbuf; raise UnterminatedStringLiteral }
 | '"' { QuotedString (Buffer.contents buf) }
 | '\\' '\\' { Buffer.add_char buf '\\'; lex_quoted_string buf lexbuf }
 | '\\' 'a' { Buffer.add_char buf '\x07'; lex_quoted_string buf lexbuf }
