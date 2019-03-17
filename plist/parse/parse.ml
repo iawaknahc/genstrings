@@ -11,7 +11,7 @@ let string_of_exn exn =
   | UnterminatedBlockComment -> "unterminated block comment"
   | UnterminatedStringLiteral -> "unterminated string literal"
   | UnterminatedBytes -> "unterminated bytes"
-  | InvalidEscapeSequence -> "invalid escape sequence"
+  | InvalidEscapeSequence s -> "invalid escape sequence `" ^ s ^ "'"
   | InvalidCharacter ch -> "invalid character `" ^ String.make 1 ch ^ "'"
   | _ -> "unknown error"
 

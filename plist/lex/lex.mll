@@ -16,7 +16,7 @@ type utf16 =
 exception UnterminatedBlockComment
 exception UnterminatedStringLiteral
 exception UnterminatedBytes
-exception InvalidEscapeSequence
+exception InvalidEscapeSequence of string
 exception InvalidCharacter of char
 
 let surr1 = 0xd800
@@ -200,13 +200,7 @@ and lex_quoted_string buf = parse
   Buffer.add_char buf c;
   lex_quoted_string buf lexbuf
 }
-| '\\' 'U' { lex_utf16 buf lexbuf }
-| '\\' eof { raise InvalidEscapeSequence }
-| '\\' _ { raise InvalidEscapeSequence }
-| _ as ch { Buffer.add_char buf ch; lex_quoted_string buf lexbuf }
-
-and lex_utf16 buf = parse
-| hex | hex hex | hex hex hex | hex hex hex hex as hex {
+| '\\' 'U' ((hex | hex hex | hex hex hex | hex hex hex hex) as hex) {
   let code_unit = int_of_string ("0x" ^ hex) in
   match classify code_unit with
   | SingleCodeUnit -> (
@@ -214,9 +208,11 @@ and lex_utf16 buf = parse
     lex_quoted_string buf lexbuf
   )
   | HighSurrogate -> lex_utf16_low buf code_unit lexbuf
-  | LowSurrogate -> raise InvalidEscapeSequence
+  | LowSurrogate -> raise @@ InvalidEscapeSequence ("\\U" ^ hex)
 }
-| eof | _ { raise InvalidEscapeSequence }
+| '\\' eof { raise @@ InvalidEscapeSequence "\\" }
+| '\\' _  as s { raise @@ InvalidEscapeSequence s }
+| _ as ch { Buffer.add_char buf ch; lex_quoted_string buf lexbuf }
 
 and lex_utf16_low buf high = parse
 | '\\' 'U' ((hex | hex hex | hex hex hex | hex hex hex hex) as hex) {
@@ -227,9 +223,10 @@ and lex_utf16_low buf high = parse
     Buffer.add_utf_8_uchar buf (Uchar.of_int code_point);
     lex_quoted_string buf lexbuf
   )
-  | _ -> raise InvalidEscapeSequence
+  | _ -> raise @@ InvalidEscapeSequence ("\\U" ^ hex)
 }
-| eof | _ { raise InvalidEscapeSequence }
+| eof { raise @@ InvalidEscapeSequence "" }
+| _ { raise @@ InvalidEscapeSequence "" }
 
 and lex_line_comment buf = parse
 | eof { LineComment (Buffer.contents buf) }

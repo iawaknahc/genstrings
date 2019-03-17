@@ -4,7 +4,7 @@ exception UnterminatedStringLiteral
 
 exception UnterminatedBytes
 
-exception InvalidEscapeSequence
+exception InvalidEscapeSequence of string
 
 exception InvalidCharacter of char
 
