@@ -12,7 +12,7 @@
 %token ParenRight
 %token Comma
 
-%start <Ast.t> plist
+%start <Dotstrings_ast.t> plist
 
 %%
 
@@ -21,7 +21,7 @@ let plist :=
 
 let entry :=
   comment = BlockComment; key = string; Equal; value = string; Semicolon;
-  { { Ast.comment; key; value; } }
+  { { Dotstrings_ast.comment; key; value; } }
 
 let string :=
 | ~ = BareString; <>

@@ -9,4 +9,6 @@ exception InvalidEscapeSequence of string
 exception InvalidCharacter of char
 
 val new_raw :
-  unit -> Lexing.lexbuf -> Token.token * Lexing.position * Lexing.position
+     unit
+  -> Lexing.lexbuf
+  -> Dotstrings_token.token * Lexing.position * Lexing.position

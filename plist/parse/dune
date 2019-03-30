@@ -1,7 +1,0 @@
-(menhir
-  (flags (--external-tokens Token) (--table))
-  (modules generate))
-
-(library
-  (libraries token ast lex menhirLib)
-  (name parse))

@@ -1,0 +1,11 @@
+(ocamllex dotstrings_lex)
+
+(menhir
+ (flags
+  (--external-tokens Dotstrings_token)
+  (--table))
+ (modules dotstrings_parse))
+
+(library
+ (libraries menhirLib)
+ (name dotstrings))
