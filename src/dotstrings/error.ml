@@ -4,17 +4,10 @@
 
 let message s =
   match s with
-  | 0 ->
-      "expecting a comment\n"
-  | 1 ->
-      "expecting a key\n"
-  | 4 ->
-      "expecting a `='\n"
-  | 5 ->
-      "expecting a value\n"
-  | 6 ->
-      "expecting a `;'\n"
-  | 11 ->
-      "expecting a comment.\n"
-  | _ ->
-      raise Not_found
+  | 0 -> "expecting a comment\n"
+  | 1 -> "expecting a key\n"
+  | 4 -> "expecting a `='\n"
+  | 5 -> "expecting a value\n"
+  | 6 -> "expecting a `;'\n"
+  | 11 -> "expecting a comment.\n"
+  | _ -> raise Not_found

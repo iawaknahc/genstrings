@@ -9,18 +9,12 @@ let initial_position filename =
 let string_of_exn exn =
   let open Dotstrings_lex in
   match exn with
-  | UnterminatedBlockComment ->
-      "unterminated block comment"
-  | UnterminatedStringLiteral ->
-      "unterminated string literal"
-  | UnterminatedBytes ->
-      "unterminated bytes"
-  | InvalidEscapeSequence s ->
-      "invalid escape sequence `" ^ s ^ "'"
-  | InvalidCharacter ch ->
-      "invalid character `" ^ String.make 1 ch ^ "'"
-  | _ ->
-      "unknown error"
+  | UnterminatedBlockComment -> "unterminated block comment"
+  | UnterminatedStringLiteral -> "unterminated string literal"
+  | UnterminatedBytes -> "unterminated bytes"
+  | InvalidEscapeSequence s -> "invalid escape sequence `" ^ s ^ "'"
+  | InvalidCharacter ch -> "invalid character `" ^ String.make 1 ch ^ "'"
+  | _ -> "unknown error"
 
 let rec loop lex lexbuf checkpoint =
   match checkpoint with
@@ -34,8 +28,7 @@ let rec loop lex lexbuf checkpoint =
       in
       let checkpoint = I.offer checkpoint result in
       loop lex lexbuf checkpoint
-  | I.Shifting _ | I.AboutToReduce _ ->
-      loop lex lexbuf (I.resume checkpoint)
+  | I.Shifting _ | I.AboutToReduce _ -> loop lex lexbuf (I.resume checkpoint)
   | I.HandlingError env ->
       let start, end_ = I.positions env in
       let state = I.current_state_number env in
@@ -44,10 +37,8 @@ let rec loop lex lexbuf checkpoint =
       in
       let message = String.trim message in
       raise @@ ParseError (message, start, end_)
-  | I.Accepted v ->
-      v
-  | I.Rejected ->
-      assert false
+  | I.Accepted v -> v
+  | I.Rejected -> assert false
 
 let parse_string ?(filename = "<stdin>") s =
   let lexbuf = Lexing.from_string s in
