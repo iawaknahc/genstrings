@@ -1,0 +1,4 @@
+(ocamllex swift_lex)
+
+(library
+ (name swift))
