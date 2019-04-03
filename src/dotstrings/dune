@@ -2,7 +2,6 @@
 
 (menhir
  (flags
-  (--external-tokens Dotstrings_token)
   (--table))
  (modules dotstrings_parse))
 

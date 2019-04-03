@@ -1,5 +1,5 @@
 {
-open Dotstrings_token
+open Dotstrings_parse
 
 type state = {
   mutable bare_string_start : Lexing.position option;
