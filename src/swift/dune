@@ -1,4 +1,7 @@
 (ocamllex swift_lex)
 
+(menhir
+ (modules swift_parse))
+
 (library
  (name swift))
