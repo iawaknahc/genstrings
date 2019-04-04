@@ -1,4 +1,4 @@
-module Ast = Dotstrings_ast
+include Dotstrings_ast
 module I = Dotstrings_parse.MenhirInterpreter
 
 exception ParseError of string * Lexing.position * Lexing.position
