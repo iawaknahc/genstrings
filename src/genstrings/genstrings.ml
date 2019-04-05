@@ -1,4 +1,10 @@
 type routine_call = {key: string; comment: string; pos: Lexing.position}
+type new_value = Key | Comment | String of string
+
+module StringSet = Set.Make (String)
+
+exception ManyError of exn list
+exception InconsistentComment of routine_call * routine_call
 
 let collect_swift ~filename ~routine_name queue ast =
   let open Swift in
@@ -37,9 +43,38 @@ let string_of_file filename =
   let s = really_input_string ch len in
   close_in_noerr ch ; s
 
-let genstrings ~routine_name dir =
+let verify_routine_calls queue =
+  let len = Queue.length queue in
+  let table = Hashtbl.create len in
+  let errors =
+    Queue.fold
+      (fun errors call ->
+        try
+          let prev = Hashtbl.find table call.key in
+          if prev.comment <> call.comment then
+            InconsistentComment (prev, call) :: errors
+          else errors
+        with Not_found ->
+          Hashtbl.replace table call.key call ;
+          errors )
+      [] queue
+  in
+  match errors with [] -> Ok (Hashtbl.to_seq_keys table) | _ -> Error errors
+
+let remove_routine_calls seq key_set =
+  Seq.map
+    (fun (lang, ast, path) ->
+      ( lang
+      , List.filter
+          (fun entry -> StringSet.mem entry.Dotstrings.key key_set)
+          ast
+      , path ) )
+    seq
+
+let genstrings ~routine_name ~devlang ~new_value dir =
+  (* Discover routine calls and Localizable.strings *)
   let call_queue = Queue.create () in
-  let table = Hashtbl.create 8 in
+  let strings_queue = Queue.create () in
   let visitor path =
     if Filename.extension path = ".swift" then
       let ast = Swift.parse_string @@ string_of_file path in
@@ -52,7 +87,17 @@ let genstrings ~routine_name dir =
       | "Localizable.strings", ".lproj" ->
           let lang = Filename.chop_suffix lang_lproj lproj in
           let ast = Dotstrings.parse_string @@ string_of_file path in
-          Hashtbl.replace table lang ast
+          Queue.push (lang, ast, path) strings_queue
       | _ -> ()
   in
-  walk dir visitor ; (call_queue, table)
+  walk dir visitor ;
+  (* Verify the same routine call has the same comment *)
+  let key_set =
+    match verify_routine_calls call_queue with
+    | Ok key_seq -> StringSet.of_seq key_seq
+    | Error errors -> raise @@ ManyError errors
+  in
+  let strings_seq =
+    remove_routine_calls (Queue.to_seq strings_queue) key_set
+  in
+  ()
