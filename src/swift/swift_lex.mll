@@ -5,9 +5,6 @@ exception UnbalancedParenthesis
 exception UnterminatedBlockComment
 exception UnterminatedString
 exception IllegalEscapeSequence
-exception IllegalMultilineStringBegin
-exception IllegalMultilineStringEnd
-exception InsufficientMultilineStringIndentation
 
 type mode =
 | Normal

@@ -2,8 +2,5 @@ exception UnbalancedParenthesis
 exception UnterminatedBlockComment
 exception UnterminatedString
 exception IllegalEscapeSequence
-exception IllegalMultilineStringBegin
-exception IllegalMultilineStringEnd
-exception InsufficientMultilineStringIndentation
 
 val make : unit -> Lexing.lexbuf -> Swift_parse.token
