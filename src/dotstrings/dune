@@ -1,8 +1,7 @@
 (ocamllex dotstrings_lex)
 
 (menhir
- (flags
-  (--table))
+ (flags (--table))
  (modules dotstrings_parse))
 
 (library
