@@ -3,5 +3,5 @@ type t = entry list
 
 exception ParseError of string * Lexing.position * Lexing.position
 
-val parse_string : string -> t
+val parse_string : ?filename:string -> string -> t
 val write_channel : out_channel -> t -> unit

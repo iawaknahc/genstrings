@@ -13,4 +13,4 @@ and string_part = StringStatic of string | StringInterpolation of t
 
 exception ParseError of string * Lexing.position * Lexing.position
 
-val parse_string : string -> t
+val parse_string : ?filename:string -> string -> t

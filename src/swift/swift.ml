@@ -35,8 +35,10 @@ let rec loop lex lexbuf checkpoint =
   | I.Accepted v -> v
   | I.Rejected -> assert false
 
-let parse_string s =
+let parse_string ?(filename = "<stdin>") s =
   let lexbuf = Lexing.from_string s in
+  lexbuf.Lexing.lex_curr_p
+  <- {lexbuf.Lexing.lex_curr_p with pos_fname= filename} ;
   let lex = Swift_lex.make () in
   let checkpoint = Swift_parse.Incremental.file initial_position in
   loop lex lexbuf checkpoint

@@ -115,7 +115,7 @@ let discover routine_name dir =
   let strings_queue = Queue.create () in
   let visitor path =
     if Filename.extension path = ".swift" then
-      let ast = Swift.parse_string @@ string_of_file path in
+      let ast = Swift.parse_string ~filename:path (string_of_file path) in
       collect_swift ~filename:path ~routine_name call_queue ast
     else
       let dotstrings = Filename.basename path in
@@ -124,7 +124,9 @@ let discover routine_name dir =
       match (dotstrings, lproj) with
       | "Localizable.strings", ".lproj" ->
           let lang = Filename.chop_suffix lang_lproj lproj in
-          let ast = Dotstrings.parse_string @@ string_of_file path in
+          let ast =
+            Dotstrings.parse_string ~filename:path (string_of_file path)
+          in
           Queue.push (lang, ast, path) strings_queue
       | _ -> ()
   in
