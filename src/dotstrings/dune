@@ -5,5 +5,5 @@
  (modules dotstrings_parse))
 
 (library
- (libraries menhirLib)
+ (libraries menhirLib uucp uutf)
  (name dotstrings))
