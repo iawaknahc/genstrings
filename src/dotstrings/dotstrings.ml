@@ -3,8 +3,8 @@ module I = Dotstrings_parse.MenhirInterpreter
 
 exception ParseError of string * Lexing.position * Lexing.position
 
-let initial_position filename =
-  {Lexing.pos_fname= filename; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
+let initial_position =
+  {Lexing.pos_fname= ""; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
 
 let string_of_exn exn =
   let open Dotstrings_lex in
@@ -40,10 +40,8 @@ let rec loop lex lexbuf checkpoint =
   | I.Accepted v -> v
   | I.Rejected -> assert false
 
-let parse_string ?(filename = "<stdin>") s =
+let parse_string s =
   let lexbuf = Lexing.from_string s in
   let lex = Dotstrings_lex.new_raw () in
-  let checkpoint =
-    Dotstrings_parse.Incremental.plist @@ initial_position filename
-  in
+  let checkpoint = Dotstrings_parse.Incremental.plist initial_position in
   loop lex lexbuf checkpoint
