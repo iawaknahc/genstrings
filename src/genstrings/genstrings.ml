@@ -1,7 +1,6 @@
 type routine_call = {key: string; comment: string; pos: Lexing.position}
 
-let collect_swift ~filename ~routine_name ast =
-  let queue = Queue.create () in
+let collect_swift ~filename ~routine_name queue ast =
   let open Swift in
   let rec loop = function
     | Ident (ident, pos)
@@ -23,8 +22,7 @@ let collect_swift ~filename ~routine_name ast =
     | _ :: rest -> loop rest
     | [] -> ()
   in
-  loop ast ;
-  List.of_seq @@ Queue.to_seq queue
+  loop ast
 
 let rec walk dir f =
   let g filename =
@@ -39,8 +37,22 @@ let string_of_file filename =
   let s = really_input_string ch len in
   close_in_noerr ch ; s
 
-let collect_swift_file filename =
-  let s = string_of_file filename in
-  let ast = Swift.parse_string s in
-  let calls = collect_swift ~filename ~routine_name:"NSLocalizedString" ast in
-  calls
+let genstrings ~routine_name dir =
+  let call_queue = Queue.create () in
+  let table = Hashtbl.create 8 in
+  let visitor path =
+    if Filename.extension path = ".swift" then
+      let ast = Swift.parse_string @@ string_of_file path in
+      collect_swift ~filename:path ~routine_name call_queue ast
+    else
+      let dotstrings = Filename.basename path in
+      let lang_lproj = Filename.basename @@ Filename.dirname path in
+      let lproj = Filename.extension lang_lproj in
+      match (dotstrings, lproj) with
+      | "Localizable.strings", ".lproj" ->
+          let lang = Filename.chop_suffix lang_lproj lproj in
+          let ast = Dotstrings.parse_string @@ string_of_file path in
+          Hashtbl.replace table lang ast
+      | _ -> ()
+  in
+  walk dir visitor ; (call_queue, table)
