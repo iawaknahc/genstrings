@@ -1,3 +1,0 @@
-(library
- (libraries dotstrings swift)
- (name genstrings))

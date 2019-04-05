@@ -1,3 +1,4 @@
 (executable
- (libraries genstrings dotstrings swift cmdliner)
- (name cmd))
+ (name genstrings)
+ (public_name genstrings)
+ (libraries genstringslib dotstrings swift cmdliner))

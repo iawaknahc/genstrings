@@ -52,18 +52,18 @@ let print_exn ~devlang exn =
   let rec loop = function
     | Dotstrings.ParseError (msg, s, _) -> write_error buf s msg
     | Swift.ParseError (msg, s, _) -> write_error buf s msg
-    | Genstrings.MissingDevLang ->
+    | Genstringslib.MissingDevLang ->
         let msg =
           sprintf "expected %s.lproj/Localizable.strings to exist\n" devlang
         in
         Buffer.add_string buf msg
-    | Genstrings.InconsistentComment (_, curr) ->
+    | Genstringslib.InconsistentComment (_, curr) ->
         let msg =
           sprintf "routine call `%s' has different comment\n"
-            curr.Genstrings.key
+            curr.Genstringslib.key
         in
-        write_error buf curr.Genstrings.pos msg
-    | Genstrings.ManyError exns -> List.iter (fun exn -> loop exn) exns
+        write_error buf curr.Genstringslib.pos msg
+    | Genstringslib.ManyError exns -> List.iter (fun exn -> loop exn) exns
     | _ -> Buffer.add_string buf "unknown error\n"
   in
   loop exn ;
@@ -72,11 +72,11 @@ let print_exn ~devlang exn =
 let genstrings devlang routine new_value placeholder dir =
   let new_value =
     match new_value with
-    | Key -> Genstrings.Key
-    | Comment -> Genstrings.Comment
-    | Placeholder -> Genstrings.String placeholder
+    | Key -> Genstringslib.Key
+    | Comment -> Genstringslib.Comment
+    | Placeholder -> Genstringslib.String placeholder
   in
-  try Genstrings.genstrings ~routine_name:routine ~devlang ~new_value dir
+  try Genstringslib.genstrings ~routine_name:routine ~devlang ~new_value dir
   with e -> print_exn ~devlang e ; exit 1
 
 let cmd =
