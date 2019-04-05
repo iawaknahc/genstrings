@@ -34,7 +34,7 @@ let collect_swift ~filename ~routine_name queue ast =
 let rec walk dir f =
   let g filename =
     let path = Filename.concat dir filename in
-    try if Sys.is_directory path then walk path f else f path with _ -> ()
+    if Sys.is_directory path then walk path f else f path
   in
   Array.iter g (Sys.readdir dir)
 
