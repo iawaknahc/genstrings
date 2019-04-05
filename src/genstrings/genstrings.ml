@@ -110,8 +110,7 @@ let write_entries entries path =
   Dotstrings.write_channel ch entries ;
   close_out_noerr ch
 
-let genstrings ~routine_name ~devlang ~new_value dir =
-  (* Discover routine calls and Localizable.strings *)
+let discover routine_name dir =
   let call_queue = Queue.create () in
   let strings_queue = Queue.create () in
   let visitor path =
@@ -130,15 +129,20 @@ let genstrings ~routine_name ~devlang ~new_value dir =
       | _ -> ()
   in
   walk dir visitor ;
-  (* Verify the same routine call has the same comment *)
+  (call_queue, strings_queue)
+
+let genstrings ~routine_name ~devlang ~new_value dir =
+  let call_queue, strings_queue = discover routine_name dir in
   let call_table =
     match verify_routine_calls call_queue with
     | Ok table -> table
     | Error errors -> raise @@ ManyError errors
   in
-  let key_set = StringSet.of_seq @@ Hashtbl.to_seq_keys call_table in
   let strings_list =
-    List.of_seq @@ remove_routine_calls (Queue.to_seq strings_queue) key_set
+    remove_routine_calls
+      (Queue.to_seq strings_queue)
+      (StringSet.of_seq @@ Hashtbl.to_seq_keys call_table)
+    |> List.of_seq
   in
   let devlang_list, other_list =
     List.partition (fun (lang, _, _) -> lang = devlang) strings_list
