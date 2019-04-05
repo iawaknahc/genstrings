@@ -45,3 +45,19 @@ let parse_string s =
   let lex = Dotstrings_lex.new_raw () in
   let checkpoint = Dotstrings_parse.Incremental.plist initial_position in
   loop lex lexbuf checkpoint
+
+(* TODO quote *)
+let quote s = s
+
+let write_channel ch t =
+  List.iter
+    (fun entry ->
+      output_string ch "/*" ;
+      output_string ch entry.comment ;
+      output_string ch "*/\n" ;
+      let key = quote entry.key in
+      output_string ch key ;
+      output_string ch " = " ;
+      let value = quote entry.value in
+      output_string ch value ; output_string ch ";\n\n" )
+    t
