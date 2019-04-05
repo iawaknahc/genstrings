@@ -95,9 +95,9 @@ let write_quoted_string ch s =
 let write_channel ch t =
   List.iter
     (fun entry ->
-      output_string ch "/*" ;
-      output_string ch (" " ^ String.trim entry.comment ^ " ") ;
-      output_string ch "*/\n" ;
+      output_string ch "/* " ;
+      output_string ch (String.trim entry.comment) ;
+      output_string ch " */\n" ;
       write_quoted_string ch entry.key ;
       output_string ch " = " ;
       write_quoted_string ch entry.value ;
