@@ -17,7 +17,7 @@ let collect_swift ~filename ~routine_name queue ast =
                :: Ident ("comment", _)
                   :: Colon :: String [StringStatic comment] :: R_paren :: rest
       when ident = routine_name ->
-        let pos = {pos with pos_fname= filename} in
+        let pos = {pos with Lexing.pos_fname= filename} in
         let call = {key; comment; pos} in
         Queue.push call queue ; loop rest
     | String parts :: rest ->
@@ -26,6 +26,39 @@ let collect_swift ~filename ~routine_name queue ast =
             | StringStatic _ -> () | StringInterpolation ast -> loop ast )
           parts ;
         loop rest
+    | _ :: rest -> loop rest
+    | [] -> ()
+  in
+  loop ast
+
+let collect_objc ~filename ~routine_name queue ast =
+  let open Objc in
+  let push pos key comment =
+    let pos = {pos with Lexing.pos_fname= filename} in
+    let call = {key; comment; pos} in
+    Queue.push call queue
+  in
+  let rec loop = function
+    | Ident (ident, pos)
+      :: L_paren
+         :: At
+            :: String key :: Comma :: At :: String comment :: R_paren :: rest
+      when ident = routine_name ->
+        push pos key comment ; loop rest
+    | Ident (ident, pos)
+      :: L_paren
+         :: String key :: Comma :: At :: String comment :: R_paren :: rest
+      when ident = routine_name ->
+        push pos key comment ; loop rest
+    | Ident (ident, pos)
+      :: L_paren
+         :: At :: String key :: Comma :: String comment :: R_paren :: rest
+      when ident = routine_name ->
+        push pos key comment ; loop rest
+    | Ident (ident, pos)
+      :: L_paren :: String key :: Comma :: String comment :: R_paren :: rest
+      when ident = routine_name ->
+        push pos key comment ; loop rest
     | _ :: rest -> loop rest
     | [] -> ()
   in
@@ -114,21 +147,25 @@ let discover routine_name dir =
   let call_queue = Queue.create () in
   let strings_queue = Queue.create () in
   let visitor path =
-    if Filename.extension path = ".swift" then
-      let ast = Swift.parse_string ~filename:path (string_of_file path) in
-      collect_swift ~filename:path ~routine_name call_queue ast
-    else
-      let dotstrings = Filename.basename path in
-      let lang_lproj = Filename.basename @@ Filename.dirname path in
-      let lproj = Filename.extension lang_lproj in
-      match (dotstrings, lproj) with
-      | "Localizable.strings", ".lproj" ->
-          let lang = Filename.chop_suffix lang_lproj lproj in
-          let ast =
-            Dotstrings.parse_string ~filename:path (string_of_file path)
-          in
-          Queue.push (lang, ast, path) strings_queue
-      | _ -> ()
+    match Filename.extension path with
+    | ".swift" ->
+        let ast = Swift.parse_string ~filename:path (string_of_file path) in
+        collect_swift ~filename:path ~routine_name call_queue ast
+    | ".m" | ".h" ->
+        let ast = Objc.parse_string ~filename:path (string_of_file path) in
+        collect_objc ~filename:path ~routine_name call_queue ast
+    | _ -> (
+        let dotstrings = Filename.basename path in
+        let lang_lproj = Filename.basename @@ Filename.dirname path in
+        let lproj = Filename.extension lang_lproj in
+        match (dotstrings, lproj) with
+        | "Localizable.strings", ".lproj" ->
+            let lang = Filename.chop_suffix lang_lproj lproj in
+            let ast =
+              Dotstrings.parse_string ~filename:path (string_of_file path)
+            in
+            Queue.push (lang, ast, path) strings_queue
+        | _ -> () )
   in
   walk dir visitor ;
   (call_queue, strings_queue)
