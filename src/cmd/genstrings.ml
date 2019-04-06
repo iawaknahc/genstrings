@@ -57,6 +57,18 @@ let print_exn ~devlang exn =
           sprintf "expected %s.lproj/Localizable.strings to exist\n" devlang
         in
         Buffer.add_string buf msg
+    | Genstringslib.MoreThanOneDevLang paths ->
+        let path_strings =
+          String.concat "\n" @@ List.map (fun p -> "\t" ^ p) paths
+        in
+        let msg =
+          sprintf
+            "found multiple %s.lproj/Localizable.strings at\n\n\
+             %s\n\n\
+             try a more specific directory\n"
+            devlang path_strings
+        in
+        Buffer.add_string buf msg
     | Genstringslib.InconsistentComment (_, curr) ->
         let msg =
           sprintf "routine call `%s' has different comment\n"

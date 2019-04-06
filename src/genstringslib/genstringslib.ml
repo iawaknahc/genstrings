@@ -6,6 +6,7 @@ module StringSet = Set.Make (String)
 exception ManyError of exn list
 exception InconsistentComment of routine_call * routine_call
 exception MissingDevLang
+exception MoreThanOneDevLang of string list
 
 let collect_swift ~filename ~routine_name queue ast =
   let open Swift in
@@ -187,7 +188,13 @@ let genstrings ~routine_name ~devlang ~new_value dir =
     List.partition (fun (lang, _, _) -> lang = devlang) strings_list
   in
   let _, devlang_entries, devlang_path =
-    match devlang_list with [] -> raise MissingDevLang | a :: _ -> a
+    match devlang_list with
+    | [a] -> a
+    | [] -> raise MissingDevLang
+    | _ ->
+        raise
+        @@ MoreThanOneDevLang
+             (List.map (fun (_, _, path) -> path) devlang_list)
   in
   let devlang_entries =
     add_routine_calls devlang_entries call_table new_value
