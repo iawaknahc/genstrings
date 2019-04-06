@@ -1,3 +1,5 @@
 (lang dune 1.8)
+(name genstrings)
+(version 0.1.0)
 (using menhir 2.0)
 (using fmt 1.1)
