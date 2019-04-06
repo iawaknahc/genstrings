@@ -1,8 +1,9 @@
 (ocamllex objc_lex)
 
 (menhir
- ; (flags (--table))
+ (flags (--table))
  (modules objc_parse))
 
 (library
- (name objc))
+ (name objc)
+ (libraries menhirLib))
