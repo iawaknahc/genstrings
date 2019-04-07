@@ -61,8 +61,9 @@ let encode int =
   let i = int - 0x10000 in
   (0xd800 + ((i lsr 10) land 0x3ff), 0xdc00 + (i land 0x3ff))
 
-let write_quoted_string ch s =
-  output_char ch '"' ;
+let pp_quoted ppf s =
+  let open Format in
+  pp_print_char ppf '"' ;
   let src = `String s in
   let encoding = `UTF_8 in
   let decoder = Uutf.decoder ~encoding src in
@@ -93,17 +94,18 @@ let write_quoted_string ch s =
     | _ -> ()
   in
   loop () ;
-  output_bytes ch (Buffer.to_bytes buf) ;
-  output_char ch '"'
+  pp_print_string ppf (Buffer.contents buf) ;
+  pp_print_char ppf '"'
 
-let write_channel ch t =
-  List.iter
-    (fun entry ->
-      output_string ch "/* " ;
-      output_string ch (String.trim entry.comment) ;
-      output_string ch " */\n" ;
-      write_quoted_string ch entry.key ;
-      output_string ch " = " ;
-      write_quoted_string ch entry.value ;
-      output_string ch ";\n\n" )
-    t
+let pp_comment ppf comment =
+  let open Format in
+  fprintf ppf "/* %a */" pp_print_string (String.trim comment)
+
+let pp_entry ppf entry =
+  let open Format in
+  fprintf ppf "@[<v>%a@,@[<h>%a@ =@ %a;@]@,@]" pp_comment entry.comment
+    pp_quoted entry.key pp_quoted entry.value
+
+let pp ppf entries =
+  let open Format in
+  fprintf ppf "@[<v>%a@]" (pp_print_list pp_entry) entries

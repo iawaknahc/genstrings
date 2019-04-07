@@ -141,7 +141,8 @@ let add_entries from_entries to_entries =
 
 let write_entries entries path =
   let ch = open_out_bin path in
-  Dotstrings.write_channel ch entries ;
+  let ppf = Format.formatter_of_out_channel ch in
+  Format.fprintf ppf "%a@." Dotstrings.pp entries ;
   close_out_noerr ch
 
 let discover routine_name dir =
