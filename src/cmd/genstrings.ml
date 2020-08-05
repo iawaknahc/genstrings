@@ -2,13 +2,15 @@ open Cmdliner
 
 type new_value = Key | Comment | Placeholder
 
-let mapping = [("key", Key); ("comment", Comment); ("placeholder", Placeholder)]
+let mapping =
+  [ ("key", Key); ("comment", Comment); ("placeholder", Placeholder) ]
+
 let sprintf = Printf.sprintf
 
 let devlang =
   let doc = "The development language" in
   let env = Arg.env_var "GENSTRINGS_DEV_LANG" ~doc in
-  Arg.(value & opt string "en" & info ["dev-lang"] ~env ~docv:"DEV_LANG" ~doc)
+  Arg.(value & opt string "en" & info [ "dev-lang" ] ~env ~docv:"DEV_LANG" ~doc)
 
 let routine =
   let doc = "The routine name to scan for" in
@@ -16,7 +18,7 @@ let routine =
   Arg.(
     value
     & opt string "NSLocalizedString"
-    & info ["routine"] ~env ~docv:"ROUTINE" ~doc)
+    & info [ "routine" ] ~env ~docv:"ROUTINE" ~doc)
 
 let new_value =
   let alts = Arg.doc_alts_enum mapping in
@@ -25,7 +27,7 @@ let new_value =
   Arg.(
     value
     & opt (enum mapping) Placeholder
-    & info ["new-value"] ~env ~docv:"NEW_VALUE" ~doc)
+    & info [ "new-value" ] ~env ~docv:"NEW_VALUE" ~doc)
 
 let placeholder =
   let doc = "The placeholder for new value" in
@@ -33,7 +35,7 @@ let placeholder =
   Arg.(
     value
     & opt string "<YOUR COPY HERE>"
-    & info ["placeholder"] ~env ~docv:"PLACEHOLDER" ~doc)
+    & info [ "placeholder" ] ~env ~docv:"PLACEHOLDER" ~doc)
 
 let dir =
   let doc = "The directory to scan" in
@@ -78,7 +80,7 @@ let print_exn ~devlang exn =
     | Genstringslib.ManyError exns -> List.iter (fun exn -> loop exn) exns
     | _ -> Buffer.add_string buf "unknown error\n"
   in
-  loop exn ;
+  loop exn;
   prerr_string @@ Buffer.contents buf
 
 let genstrings devlang routine new_value placeholder dir =
@@ -89,11 +91,13 @@ let genstrings devlang routine new_value placeholder dir =
     | Placeholder -> Genstringslib.String placeholder
   in
   try Genstringslib.genstrings ~routine_name:routine ~devlang ~new_value dir
-  with e -> print_exn ~devlang e ; exit 1
+  with e ->
+    print_exn ~devlang e;
+    exit 1
 
 let cmd =
   let doc = "generate string table from source code" in
-  ( Term.(const genstrings $ devlang $ routine $ new_value $ placeholder $ dir)
-  , Term.info "genstrings" ~doc ~exits:Term.default_exits )
+  ( Term.(const genstrings $ devlang $ routine $ new_value $ placeholder $ dir),
+    Term.info "genstrings" ~doc ~exits:Term.default_exits )
 
 let () = Term.(exit @@ eval ~catch:false cmd)

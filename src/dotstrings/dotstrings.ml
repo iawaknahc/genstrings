@@ -4,7 +4,7 @@ module I = Dotstrings_parse.MenhirInterpreter
 exception ParseError of string * Lexing.position * Lexing.position
 
 let initial_position filename =
-  {Lexing.pos_fname= filename; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
+  { Lexing.pos_fname = filename; pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }
 
 let string_of_exn exn =
   let open Dotstrings_lex in
@@ -42,8 +42,8 @@ let rec loop lex lexbuf checkpoint =
 
 let parse_string ?(filename = "<stdin>") s =
   let lexbuf = Lexing.from_string s in
-  lexbuf.Lexing.lex_curr_p
-  <- {lexbuf.Lexing.lex_curr_p with pos_fname= filename} ;
+  lexbuf.Lexing.lex_curr_p <-
+    { lexbuf.Lexing.lex_curr_p with pos_fname = filename };
   let lex = Dotstrings_lex.new_raw () in
   let checkpoint =
     Dotstrings_parse.Incremental.plist (initial_position filename)
@@ -52,8 +52,8 @@ let parse_string ?(filename = "<stdin>") s =
 
 let is_printable ch =
   match Uucp.Gc.general_category ch with
-  | `Ll | `Lm | `Lo | `Lt | `Lu | `Mc | `Me | `Mn | `Nd | `Nl | `No | `Pc
-   |`Pd | `Pe | `Pf | `Pi | `Po | `Ps | `Sc | `Sk | `Sm | `So ->
+  | `Ll | `Lm | `Lo | `Lt | `Lu | `Mc | `Me | `Mn | `Nd | `Nl | `No | `Pc | `Pd
+  | `Pe | `Pf | `Pi | `Po | `Ps | `Sc | `Sk | `Sm | `So ->
       true
   | _ -> false
 
@@ -63,7 +63,7 @@ let encode int =
 
 let pp_quoted ppf s =
   let open Format in
-  pp_print_char ppf '"' ;
+  pp_print_char ppf '"';
   let src = `String s in
   let encoding = `UTF_8 in
   let decoder = Uutf.decoder ~encoding src in
@@ -89,12 +89,12 @@ let pp_quoted ppf s =
               Buffer.add_string buf @@ Printf.sprintf "\\U%04x" int
             else
               let r1, r2 = encode int in
-              Buffer.add_string buf @@ Printf.sprintf "\\U%04x\\U%04x" r1 r2 ) ;
+              Buffer.add_string buf @@ Printf.sprintf "\\U%04x\\U%04x" r1 r2 );
         loop ()
     | _ -> ()
   in
-  loop () ;
-  pp_print_string ppf (Buffer.contents buf) ;
+  loop ();
+  pp_print_string ppf (Buffer.contents buf);
   pp_print_char ppf '"'
 
 let pp_comment ppf comment =

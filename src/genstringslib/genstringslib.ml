@@ -1,11 +1,15 @@
-type routine_call = {key: string; comment: string; pos: Lexing.position}
+type routine_call = { key : string; comment : string; pos : Lexing.position }
+
 type new_value = Key | Comment | String of string
 
 module StringSet = Set.Make (String)
 
 exception ManyError of exn list
+
 exception InconsistentComment of routine_call * routine_call
+
 exception MissingDevLang
+
 exception MoreThanOneDevLang of string list
 
 let collect_swift ~filename ~routine_name queue ast =
@@ -13,19 +17,20 @@ let collect_swift ~filename ~routine_name queue ast =
   let rec loop = function
     | Ident (ident, pos)
       :: L_paren
-         :: String [StringStatic key]
+         :: String [ StringStatic key ]
             :: Comma
                :: Ident ("comment", _)
-                  :: Colon :: String [StringStatic comment] :: R_paren :: rest
+                  :: Colon :: String [ StringStatic comment ] :: R_paren :: rest
       when ident = routine_name ->
-        let pos = {pos with Lexing.pos_fname= filename} in
-        let call = {key; comment; pos} in
-        Queue.push call queue ; loop rest
+        let pos = { pos with Lexing.pos_fname = filename } in
+        let call = { key; comment; pos } in
+        Queue.push call queue;
+        loop rest
     | String parts :: rest ->
         List.iter
           (function
-            | StringStatic _ -> () | StringInterpolation ast -> loop ast )
-          parts ;
+            | StringStatic _ -> () | StringInterpolation ast -> loop ast)
+          parts;
         loop rest
     | _ :: rest -> loop rest
     | [] -> ()
@@ -35,31 +40,34 @@ let collect_swift ~filename ~routine_name queue ast =
 let collect_objc ~filename ~routine_name queue ast =
   let open Objc in
   let push pos key comment =
-    let pos = {pos with Lexing.pos_fname= filename} in
-    let call = {key; comment; pos} in
+    let pos = { pos with Lexing.pos_fname = filename } in
+    let call = { key; comment; pos } in
     Queue.push call queue
   in
   let rec loop = function
     | Ident (ident, pos)
       :: L_paren
-         :: At
-            :: String key :: Comma :: At :: String comment :: R_paren :: rest
+         :: At :: String key :: Comma :: At :: String comment :: R_paren :: rest
       when ident = routine_name ->
-        push pos key comment ; loop rest
+        push pos key comment;
+        loop rest
     | Ident (ident, pos)
       :: L_paren
          :: String key :: Comma :: At :: String comment :: R_paren :: rest
       when ident = routine_name ->
-        push pos key comment ; loop rest
+        push pos key comment;
+        loop rest
     | Ident (ident, pos)
       :: L_paren
          :: At :: String key :: Comma :: String comment :: R_paren :: rest
       when ident = routine_name ->
-        push pos key comment ; loop rest
+        push pos key comment;
+        loop rest
     | Ident (ident, pos)
       :: L_paren :: String key :: Comma :: String comment :: R_paren :: rest
       when ident = routine_name ->
-        push pos key comment ; loop rest
+        push pos key comment;
+        loop rest
     | _ :: rest -> loop rest
     | [] -> ()
   in
@@ -76,7 +84,8 @@ let string_of_file filename =
   let ch = open_in_bin filename in
   let len = in_channel_length ch in
   let s = really_input_string ch len in
-  close_in_noerr ch ; s
+  close_in_noerr ch;
+  s
 
 let verify_routine_calls queue =
   let len = Queue.length queue in
@@ -90,8 +99,8 @@ let verify_routine_calls queue =
             InconsistentComment (prev, call) :: errors
           else errors
         with Not_found ->
-          Hashtbl.replace table call.key call ;
-          errors )
+          Hashtbl.replace table call.key call;
+          errors)
       [] queue
   in
   match errors with [] -> Ok table | _ -> Error errors
@@ -99,11 +108,11 @@ let verify_routine_calls queue =
 let remove_routine_calls seq key_set =
   Seq.map
     (fun (lang, ast, path) ->
-      ( lang
-      , List.filter
+      ( lang,
+        List.filter
           (fun entry -> StringSet.mem entry.Dotstrings.key key_set)
-          ast
-      , path ) )
+          ast,
+        path ))
     seq
 
 let key_set_of_entries entries =
@@ -127,8 +136,8 @@ let add_routine_calls entries call_table new_value =
           if value.comment = "" then "No comment provided by engineer."
           else value.comment
         in
-        let new_entry = {Dotstrings.key; value= new_value; comment} in
-        new_entry :: acc )
+        let new_entry = { Dotstrings.key; value = new_value; comment } in
+        new_entry :: acc)
     call_table entries
 
 let add_entries from_entries to_entries =
@@ -136,13 +145,13 @@ let add_entries from_entries to_entries =
   List.fold_left
     (fun acc entry ->
       if StringSet.mem entry.Dotstrings.key to_key_set then acc
-      else entry :: acc )
+      else entry :: acc)
     to_entries from_entries
 
 let write_entries entries path =
   let ch = open_out_bin path in
   let ppf = Format.formatter_of_out_channel ch in
-  Format.fprintf ppf "%a@." Dotstrings.pp entries ;
+  Format.fprintf ppf "%a@." Dotstrings.pp entries;
   close_out_noerr ch
 
 let discover routine_name dir =
@@ -169,7 +178,7 @@ let discover routine_name dir =
             Queue.push (lang, ast, path) strings_queue
         | _ -> () )
   in
-  walk dir visitor ;
+  walk dir visitor;
   (call_queue, strings_queue)
 
 let genstrings ~routine_name ~devlang ~new_value dir =
@@ -190,12 +199,11 @@ let genstrings ~routine_name ~devlang ~new_value dir =
   in
   let _, devlang_entries, devlang_path =
     match devlang_list with
-    | [a] -> a
+    | [ a ] -> a
     | [] -> raise MissingDevLang
     | _ ->
         raise
-        @@ MoreThanOneDevLang
-             (List.map (fun (_, _, path) -> path) devlang_list)
+        @@ MoreThanOneDevLang (List.map (fun (_, _, path) -> path) devlang_list)
   in
   let devlang_entries =
     add_routine_calls devlang_entries call_table new_value
@@ -204,7 +212,7 @@ let genstrings ~routine_name ~devlang ~new_value dir =
     List.map
       (fun (lang, entries, path) ->
         let entries = add_entries devlang_entries entries in
-        (lang, entries, path) )
+        (lang, entries, path))
       other_list
   in
   let all_list = (devlang, devlang_entries, devlang_path) :: other_list in
