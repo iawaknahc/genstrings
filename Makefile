@@ -1,14 +1,10 @@
-.PHONY: clean release setup fmt
+.PHONY: clean release fmt
 
 release:
 	dune build -p genstrings
 
 clean:
 	dune clean
-
-setup:
-	opam switch create . 4.07.1 --deps-only
-	opam install utop ocamlformat
 
 fmt:
 	@dune build --auto-promote @fmt
