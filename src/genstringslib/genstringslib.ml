@@ -1,15 +1,11 @@
 type routine_call = { key : string; comment : string; pos : Lexing.position }
-
 type new_value = Key | Comment | String of string
 
 module StringSet = Set.Make (String)
 
 exception ManyError of exn list
-
 exception InconsistentComment of routine_call * routine_call
-
 exception MissingDevLang
-
 exception MoreThanOneDevLang of string list
 
 let collect_swift ~filename ~routine_name queue ast =
@@ -17,10 +13,12 @@ let collect_swift ~filename ~routine_name queue ast =
   let rec loop = function
     | Ident (ident, pos)
       :: L_paren
-         :: String [ StringStatic key ]
-            :: Comma
-               :: Ident ("comment", _)
-                  :: Colon :: String [ StringStatic comment ] :: R_paren :: rest
+      :: String [ StringStatic key ]
+      :: Comma
+      :: Ident ("comment", _)
+      :: Colon
+      :: String [ StringStatic comment ]
+      :: R_paren :: rest
       when ident = routine_name ->
         let pos = { pos with Lexing.pos_fname = filename } in
         let call = { key; comment; pos } in
@@ -46,25 +44,38 @@ let collect_objc ~filename ~routine_name queue ast =
   in
   let rec loop = function
     | Ident (ident, pos)
-      :: L_paren
-         :: At :: String key :: Comma :: At :: String comment :: R_paren :: rest
+      :: L_paren :: At
+      :: String key
+      :: Comma :: At
+      :: String comment
+      :: R_paren :: rest
       when ident = routine_name ->
         push pos key comment;
         loop rest
     | Ident (ident, pos)
       :: L_paren
-         :: String key :: Comma :: At :: String comment :: R_paren :: rest
+      :: String key
+      :: Comma :: At
+      :: String comment
+      :: R_paren :: rest
+      when ident = routine_name ->
+        push pos key comment;
+        loop rest
+    | Ident (ident, pos)
+      :: L_paren :: At
+      :: String key
+      :: Comma
+      :: String comment
+      :: R_paren :: rest
       when ident = routine_name ->
         push pos key comment;
         loop rest
     | Ident (ident, pos)
       :: L_paren
-         :: At :: String key :: Comma :: String comment :: R_paren :: rest
-      when ident = routine_name ->
-        push pos key comment;
-        loop rest
-    | Ident (ident, pos)
-      :: L_paren :: String key :: Comma :: String comment :: R_paren :: rest
+      :: String key
+      :: Comma
+      :: String comment
+      :: R_paren :: rest
       when ident = routine_name ->
         push pos key comment;
         loop rest
@@ -176,7 +187,7 @@ let discover routine_name dir =
               Dotstrings.parse_string ~filename:path (string_of_file path)
             in
             Queue.push (lang, ast, path) strings_queue
-        | _ -> () )
+        | _ -> ())
   in
   walk dir visitor;
   (call_queue, strings_queue)

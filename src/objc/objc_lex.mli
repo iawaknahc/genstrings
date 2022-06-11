@@ -1,7 +1,5 @@
 exception UnterminatedBlockComment
-
 exception UnterminatedStringLiteral
-
 exception IllegalEscapeSequence
 
 val token :

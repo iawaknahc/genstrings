@@ -9,12 +9,12 @@ let sprintf = Printf.sprintf
 
 let devlang =
   let doc = "The development language" in
-  let env = Arg.env_var "GENSTRINGS_DEV_LANG" ~doc in
+  let env = Cmd.Env.info "GENSTRINGS_DEV_LANG" ~doc in
   Arg.(value & opt string "en" & info [ "dev-lang" ] ~env ~docv:"DEV_LANG" ~doc)
 
 let routine =
   let doc = "The routine name to scan for" in
-  let env = Arg.env_var "GENSTRINGS_ROUTINE" ~doc in
+  let env = Cmd.Env.info "GENSTRINGS_ROUTINE" ~doc in
   Arg.(
     value
     & opt string "NSLocalizedString"
@@ -23,7 +23,7 @@ let routine =
 let new_value =
   let alts = Arg.doc_alts_enum mapping in
   let doc = sprintf "The new value to use; $(docv) must be %s" alts in
-  let env = Arg.env_var "GENSTRINGS_NEW_VALUE" ~doc in
+  let env = Cmd.Env.info "GENSTRINGS_NEW_VALUE" ~doc in
   Arg.(
     value
     & opt (enum mapping) Placeholder
@@ -31,7 +31,7 @@ let new_value =
 
 let placeholder =
   let doc = "The placeholder for new value" in
-  let env = Arg.env_var "GENSTRINGS_PLACEHOLDER" ~doc in
+  let env = Cmd.Env.info "GENSTRINGS_PLACEHOLDER" ~doc in
   Arg.(
     value
     & opt string "<YOUR COPY HERE>"
@@ -39,7 +39,7 @@ let placeholder =
 
 let dir =
   let doc = "The directory to scan" in
-  let env = Arg.env_var "GENSTRINGS_DIR" ~doc in
+  let env = Cmd.Env.info "GENSTRINGS_DIR" ~doc in
   Arg.(
     value & pos 0 dir Filename.current_dir_name & info [] ~env ~docv:"DIR" ~doc)
 
@@ -97,7 +97,11 @@ let genstrings devlang routine new_value placeholder dir =
 
 let cmd =
   let doc = "generate string table from source code" in
-  ( Term.(const genstrings $ devlang $ routine $ new_value $ placeholder $ dir),
-    Term.info "genstrings" ~doc ~exits:Term.default_exits )
+  let genstrings_t =
+    Term.(const genstrings $ devlang $ routine $ new_value $ placeholder $ dir)
+  in
+  let info = Cmd.info "genstrings" ~doc in
+  Cmd.v info genstrings_t
 
-let () = Term.(exit @@ eval ~catch:false cmd)
+let main () = exit (Cmd.eval cmd)
+let () = main ()

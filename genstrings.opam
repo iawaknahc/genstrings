@@ -1,10 +1,10 @@
 opam-version: "2.0"
 maintainer: "Louis Chan <louischan0325@gmail.com"
 depends: [
-  "ocaml" {>= "4.10.0"}
+  "ocaml" {>= "4.14.0"}
   "dune" {build}
-  "cmdliner" {>= "1.0.0"}
-  "uutf" {>= "1.0.0"}
-  "uucp" {>= "13.0.0"}
-  "menhir" {>= "20200624"}
+  "cmdliner" {>= "1.1.1"}
+  "uutf" {>= "1.0.3"}
+  "uucp" {>= "14.0.0"}
+  "menhir" {>= "20220210"}
 ]

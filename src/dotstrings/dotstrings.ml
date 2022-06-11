@@ -72,7 +72,7 @@ let pp_quoted ppf s =
     match Uutf.decode decoder with
     | `Uchar ch ->
         let int = Uchar.to_int ch in
-        ( match int with
+        (match int with
         | 0x5c (* \ *) -> Buffer.add_string buf "\\\\"
         | 0x07 (* bell *) -> Buffer.add_string buf "\\a"
         | 0x08 (* backspace *) -> Buffer.add_string buf "\\b"
@@ -89,7 +89,7 @@ let pp_quoted ppf s =
               Buffer.add_string buf @@ Printf.sprintf "\\U%04x" int
             else
               let r1, r2 = encode int in
-              Buffer.add_string buf @@ Printf.sprintf "\\U%04x\\U%04x" r1 r2 );
+              Buffer.add_string buf @@ Printf.sprintf "\\U%04x\\U%04x" r1 r2);
         loop ()
     | _ -> ()
   in

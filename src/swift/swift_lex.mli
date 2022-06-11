@@ -1,9 +1,6 @@
 exception UnbalancedParenthesis
-
 exception UnterminatedBlockComment
-
 exception UnterminatedString
-
 exception IllegalEscapeSequence
 
 val make :
